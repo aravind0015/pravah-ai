@@ -1,5 +1,10 @@
 import { useState, useRef, useEffect } from "react";
 
+// Demo bootstrap identifiers (pre-seeded in DB)
+// In production, these would come from auth/session context
+const DEMO_USER_ID = "0f596df2-f875-493f-9e04-e221791d8b41";
+const DEMO_CONVERSATION_ID = "8990eefd-8d9f-4329-9763-93154dbf9554";
+
 type Message = {
   role: "user" | "assistant";
   content: string;
@@ -33,8 +38,8 @@ function App() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          userId: "0f596df2-f875-493f-9e04-e221791d8b41",
-          conversationId: "8990eefd-8d9f-4329-9763-93154dbf9554",
+          userId: DEMO_USER_ID,
+          conversationId: DEMO_CONVERSATION_ID,
           message: userMessage.content,
         }),
       }

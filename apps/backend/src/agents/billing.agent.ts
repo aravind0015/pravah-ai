@@ -10,12 +10,20 @@ export async function billingAgent(
   message: string,
   context: AgentContext
 ): Promise<AgentResult> {
+  // Context is available for multi-turn billing conversations if needed
+  const recentUserMessages = context.recentMessages
+    ?.filter((m) => m.role === "user")
+    .map((m) => m.content);
+
   const orders = await getOrdersByUser(context.userId);
 
   if (orders.length === 0) {
     return {
       agent: "billing",
       summary: "No orders available for billing lookup",
+      data: {
+        recentUserMessages,
+      },
     };
   }
 
@@ -25,6 +33,9 @@ export async function billingAgent(
     return {
       agent: "billing",
       summary: "No payment found for order",
+      data: {
+        recentUserMessages,
+      },
     };
   }
 
@@ -38,6 +49,7 @@ export async function billingAgent(
       paymentStatus: payment.status,
       refundStatus,
       invoiceUrl: invoice?.url ?? null,
+      contextSummary: context.summary,
     },
     nextAction: "Explain billing or refund status to user",
   };

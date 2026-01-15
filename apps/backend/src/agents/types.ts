@@ -3,7 +3,16 @@ export type AgentType = "support" | "order" | "billing";
 export interface AgentContext {
   userId: string;
   conversationId: string;
+
+  // conversational context
+  recentMessages: {
+    role: "user" | "system";
+    content: string;
+  }[];
+
+  summary?: string;
 }
+
 
 export interface AgentResult {
   agent: AgentType;

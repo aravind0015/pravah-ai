@@ -8,6 +8,7 @@ export async function orderAgent(
   message: string,
   context: AgentContext
 ): Promise<AgentResult> {
+  // Order queries are typically stateless; context is available if needed
   const orders = await getOrdersByUser(context.userId);
 
   if (orders.length === 0) {

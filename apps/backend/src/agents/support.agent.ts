@@ -1,22 +1,23 @@
 import { AgentContext, AgentResult } from "./types";
-import { getRecentMessages } from "../tools/conversation.tool";
 
 export async function supportAgent(
   message: string,
   context: AgentContext
 ): Promise<AgentResult> {
-  const recentMessages = await getRecentMessages(
-    context.conversationId,
-    5
-  );
+  // Context is already prepared by the service layer
+  const recentUserMessages = context.recentMessages
+    .filter((m) => m.role === "user")
+    .map((m) => m.content);
 
   return {
     agent: "support",
     summary: "Handled general support inquiry",
     data: {
-      recentMessages,
+      recentMessages: recentUserMessages,
       userMessage: message,
+      contextSummary: context.summary,
     },
     nextAction: "Respond with troubleshooting or FAQ guidance",
   };
 }
+

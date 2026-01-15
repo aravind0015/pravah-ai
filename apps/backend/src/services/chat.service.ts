@@ -18,7 +18,62 @@ export interface ChatResponse {
     reason: string;
   };
   result: AgentResult;
-}
+// }
+// export async function handleChat(
+//   input: ChatInput
+// ): Promise<ChatResponse> {
+//   const { conversationId, userId, message } = input;
+
+  
+
+//   const conversation = await getConversationById(conversationId);
+//   if (!conversation) {
+//     throw new Error("Conversation not found");
+//   }
+
+//   // 1. Persist user message
+//   await createMessage(conversationId, "user", message);
+
+//   // 2. Route message
+//   const routing = routeMessage(message);
+
+//   const context: AgentContext = {
+//     userId,
+//     conversationId,
+//   };
+
+//   // 3. Execute agent
+//   let result: AgentResult;
+
+//   switch (routing.agent) {
+//     case "order":
+//       result = await orderAgent(message, context);
+//       break;
+//     case "billing":
+//       result = await billingAgent(message, context);
+//       break;
+//     case "support":
+//     default:
+//       result = await supportAgent(message, context);
+//       break;
+//   }
+
+//   // 4. Persist agent summary (system message)
+//   await createMessage(
+//     conversationId,
+//     "system",
+//     `[${result.agent}] ${result.summary}`
+//   );
+
+//   return {
+//     routing,
+//     result,
+//   };
+// }
+
+
+import { buildContext } from "./context.service";
+
 export async function handleChat(
   input: ChatInput
 ): Promise<ChatResponse> {
@@ -32,15 +87,25 @@ export async function handleChat(
   // 1. Persist user message
   await createMessage(conversationId, "user", message);
 
-  // 2. Route message
+  // 2. Build conversational context
+  const messages = conversation.messages.map((m) => ({
+    role: m.role as "user" | "system",
+    content: m.content,
+  }));
+
+  const { summary, recentMessages } = buildContext(messages);
+
+  // 3. Route message
   const routing = routeMessage(message);
 
   const context: AgentContext = {
     userId,
     conversationId,
+    recentMessages,
+    summary,
   };
 
-  // 3. Execute agent
+  // 4. Execute agent
   let result: AgentResult;
 
   switch (routing.agent) {
@@ -56,7 +121,7 @@ export async function handleChat(
       break;
   }
 
-  // 4. Persist agent summary (system message)
+  // 5. Persist agent summary
   await createMessage(
     conversationId,
     "system",
@@ -68,8 +133,6 @@ export async function handleChat(
     result,
   };
 }
-
-
 
 export async function* handleChatStream(
   input: ChatInput
