@@ -10,6 +10,66 @@ type Message = {
   content: string;
 };
 
+function formatAssistantResponse(raw: string): string {
+  // Remove internal planning lines
+  const cleaned = raw
+    .split("\n")
+    .filter(
+      (line) =>
+        !line.startsWith("Next:") &&
+        !line.startsWith("Respond with") &&
+        !line.startsWith("Explain")
+    )
+    .join("\n")
+    .trim();
+
+  // Order agent
+  if (cleaned.includes('"status":')) {
+    try {
+      const match = cleaned.match(/\{[\s\S]*\}/);
+      if (!match) return cleaned;
+
+      const data = JSON.parse(match[0]);
+      return `📦 **Order Status**
+
+Your order has been **${data.status}**.
+
+• Order ID: ${data.orderId}  
+• Total: ₹${data.total}`;
+    } catch {
+      return cleaned;
+    }
+  }
+
+  // Billing agent
+  if (cleaned.includes('"paymentStatus"')) {
+    try {
+      const match = cleaned.match(/\{[\s\S]*\}/);
+      if (!match) return cleaned;
+
+      const data = JSON.parse(match[0]);
+      return `💳 **Billing Details**
+
+• Payment Status: ${data.paymentStatus}  
+• Refund Status: ${data.refundStatus}
+${data.invoiceUrl ? `• Invoice: ${data.invoiceUrl}` : ""}`;
+    } catch {
+      return cleaned;
+    }
+  }
+
+  // Support agent
+  if (cleaned.startsWith("Handled general support inquiry")) {
+    return `🛠 **Support**
+
+I can help you with account issues, login problems, or general questions.  
+Please describe the issue you’re facing.`;
+  }
+
+  return cleaned;
+}
+
+
 function App() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
@@ -28,7 +88,7 @@ function App() {
     setInput("");
     setLoading(true);
 
-    // placeholder assistant message (for streaming)
+    // Placeholder assistant message (for streaming)
     let assistantMessage: Message = { role: "assistant", content: "" };
     setMessages((prev) => [...prev, assistantMessage]);
 
@@ -53,22 +113,42 @@ function App() {
     const reader = res.body.getReader();
     const decoder = new TextDecoder();
 
+    let rawAssistantText = "";
+
     while (true) {
       const { done, value } = await reader.read();
       if (done) break;
 
       const chunk = decoder.decode(value);
+
+      // 🔒 Filter internal orchestration hints
+      const filteredChunk = chunk
+        .split("\n")
+        .filter(
+          (line) =>
+            !line.startsWith("Next:") &&
+            !line.startsWith("Respond with") &&
+            !line.startsWith("Explain")
+        )
+        .join("\n");
+
+      rawAssistantText += filteredChunk;
+
       assistantMessage = {
         ...assistantMessage,
-        content: assistantMessage.content + chunk,
+        content: rawAssistantText,
       };
 
-      setMessages((prev) => [
-        ...prev.slice(0, -1),
-        assistantMessage,
-      ]);
+      setMessages((prev) => [...prev.slice(0, -1), assistantMessage]);
     }
 
+    // ✅ Apply semantic formatting ONCE after stream completes
+    assistantMessage = {
+      ...assistantMessage,
+      content: formatAssistantResponse(rawAssistantText),
+    };
+
+    setMessages((prev) => [...prev.slice(0, -1), assistantMessage]);
     setLoading(false);
   }
 
@@ -93,7 +173,13 @@ function App() {
           ))}
 
           {loading && (
-            <div style={{ ...styles.message, ...styles.assistant, opacity: 0.6 }}>
+            <div
+              style={{
+                ...styles.message,
+                ...styles.assistant,
+                opacity: 0.6,
+              }}
+            >
               Thinking…
             </div>
           )}

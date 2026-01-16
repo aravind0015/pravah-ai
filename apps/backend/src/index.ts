@@ -3,6 +3,7 @@ import { Hono } from "hono";
 import { cors } from "hono/cors"; 
 import { api } from "./routes/api";
 import { errorMiddleware } from "./middleware/error.middleware";
+import { rateLimit } from "./middleware/rate-limit.middleware";
 
 const app = new Hono();
 
@@ -13,7 +14,7 @@ app.use(
     credentials: true,
   })
 );
-
+app.use("/api/chat/*", rateLimit);
 app.use("*", errorMiddleware);
 app.route("/api", api);
 
